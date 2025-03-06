@@ -8,11 +8,13 @@
 #define OFFSET_PHASE -125
 
 float get_period();
-float get_peak_voltage();
+float get_ref_peak();
+float get_test_peak();
 float get_phase_shift(float period);
 
 int main(void) {
-	float period, frequency, voltage_peak, voltage_peak_rms, phase;
+	float period, frequency, voltage_ref, voltage_ref_rms,
+		voltage_test, voltage_test_rms, phase;
 	char buf[17];
 
 	/* Initialise ADC. */
@@ -44,17 +46,20 @@ int main(void) {
 		frequency = 1000/period;
 
 		/* Get peak voltage. */
-		voltage_peak = get_peak_voltage();
-		voltage_peak_rms = 1.414213562 * voltage_peak;
+		voltage_ref = get_ref_peak();
+		voltage_ref_rms = 1.414213562 * voltage_ref;
+
+		voltage_test = get_test_peak();
+		voltage_test_rms = 1.414213562 * voltage_test;
 
 		phase = get_phase_shift(period);
-		printf("%f\r\n", phase);
+		if (phase > -1.6 && phase < 1.6) {
+			phase -= 1.4;
+		}
 
-		// sprintf(buf, "T: %6.4f ms", period);
-		sprintf(buf, "V: %6.4f V", voltage_peak);
-		// sprintf(buf, "V: %6.4f V RMS", voltage_peak_rms);
+		sprintf(buf, "R:%1.2fV T:%1.2fV", voltage_ref_rms, voltage_test_rms);
 		lcd_print(buf, 1, 1);
-		sprintf(buf, "f: %6.4f Hz", frequency);
+		sprintf(buf, "Phase:%5.3f deg", phase);
 		lcd_print(buf, 2, 1);
 	}
 
@@ -76,11 +81,24 @@ float get_period() {
 	return (float)24000 * (unsigned int)(256*TH0+TL0+OFFSET_PERIOD) / SYSCLK;
 }
 
-float get_peak_voltage() {
+float get_ref_peak() {
 	float voltage, voltage_peak;
 	voltage_peak = 0;
 	while (adc_volts(QFP32_MUX_P2_6) <= 0.005);
 	while ((voltage = adc_volts(QFP32_MUX_P2_6)) >= 0.001) {
+		if (voltage > voltage_peak) {
+			voltage_peak = voltage;
+		}
+	}
+
+	return voltage_peak;
+}
+
+float get_test_peak() {
+	float voltage, voltage_peak;
+	voltage_peak = 0;
+	while (adc_volts(QFP32_MUX_P1_4) <= 0.005);
+	while ((voltage = adc_volts(QFP32_MUX_P1_4)) >= 0.001) {
 		if (voltage > voltage_peak) {
 			voltage_peak = voltage;
 		}
@@ -99,9 +117,9 @@ float get_phase_shift(float period) {
 	while ((adc_volts(QFP32_MUX_P1_4) >= 0.001) || (adc_volts(QFP32_MUX_P2_6) >= 0.001));
 	while ((adc_volts(QFP32_MUX_P1_4) <= 0.005) && (adc_volts(QFP32_MUX_P2_6) <= 0.005));
 	TR0 = 1;
-	sign = (adc_volts(QFP32_MUX_P1_4) <= 0.005) ? 1 : -1;
+	sign = (adc_volts(QFP32_MUX_P1_4) <= 0.005) ? -1 : 1;
 	/* Run until both signals are not zero. */
 	while ((adc_volts(QFP32_MUX_P1_4) <= 0.005) || (adc_volts(QFP32_MUX_P2_6) <= 0.005));
 	TR0 = 0;
-	return (float)360 * 12000 * (unsigned)ABS(256*TH0+TL0+OFFSET_PHASE) / SYSCLK / period * sign;
+	return (float)360 * 12000 * (unsigned)ABS((long)256*TH0+TL0+OFFSET_PHASE) / SYSCLK / period * sign;
 }
