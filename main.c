@@ -82,7 +82,7 @@ float get_peak_voltage() {
 	while (adc_volts(QFP32_MUX_P2_6) <= 0.005);
 	while ((voltage = adc_volts(QFP32_MUX_P2_6)) >= 0.001) {
 		if (voltage > voltage_peak) {
-		 	voltage_peak = voltage;
+			voltage_peak = voltage;
 		}
 	}
 
@@ -90,6 +90,7 @@ float get_peak_voltage() {
 }
 
 float get_phase_shift(float period) {
+	int sign;
 	/* Stop and reset timer 0. */
 	TR0 = 0;
 	TH0 = 0;
@@ -98,9 +99,9 @@ float get_phase_shift(float period) {
 	while ((adc_volts(QFP32_MUX_P1_4) >= 0.001) || (adc_volts(QFP32_MUX_P2_6) >= 0.001));
 	while ((adc_volts(QFP32_MUX_P1_4) <= 0.005) && (adc_volts(QFP32_MUX_P2_6) <= 0.005));
 	TR0 = 1;
+	sign = (adc_volts(QFP32_MUX_P1_4) <= 0.005) ? 1 : -1;
 	/* Run until both signals are not zero. */
 	while ((adc_volts(QFP32_MUX_P1_4) <= 0.005) || (adc_volts(QFP32_MUX_P2_6) <= 0.005));
 	TR0 = 0;
-
-	return (float)360 * 12000 * (unsigned int)ABS(256*TH0+TL0+OFFSET_PHASE) / SYSCLK / period;
+	return (float)360 * 12000 * (unsigned)ABS(256*TH0+TL0+OFFSET_PHASE) / SYSCLK / period * sign;
 }
