@@ -12,6 +12,8 @@
 #define LCD_D6 P1_1
 #define LCD_D7 P1_0
 
+#define ABS(x) (((x) < 0) ? -(x) : (x))
+
 char _c51_external_startup (void) {
 	SFRPAGE = 0x00;
 	WDTCN = 0xDE;
